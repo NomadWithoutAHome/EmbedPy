@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EmPy - Image File Embedder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --error: #ef4444;
+            --gray-dark: #18181b;
+            --gray: #27272a;
+            --gray-light: #3f3f46;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .card {
+            background-color: #1e293b;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .upload-zone {
+            border: 2px dashed #64748b;
+            border-radius: 0.5rem;
+            transition: all 0.3s ease;
+        }
+        .upload-zone:hover, .upload-zone.active {
+            border-color: var(--primary);
+            background-color: rgba(99, 102, 241, 0.05);
+        }
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+        .badge-success {
+            background-color: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+        .badge-waiting {
+            background-color: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
+        .tab {
+            cursor: pointer;
+            padding: 0.75rem 1.5rem;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .tab.active {
+            border-bottom: 2px solid var(--primary);
+            color: white;
+        }
+        .tab:hover:not(.active) {
+            border-bottom: 2px solid var(--gray-light);
+        }
+        .progress-bar {
+            height: 6px;
+            background-color: var(--gray-light);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <!-- Header -->
+    <header class="py-6 px-4 border-b border-gray-800">
+        <div class="max-w-5xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <span class="text-white font-bold text-xl">E</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white">EmPy</h1>
+                    <p class="text-xs text-gray-400">Secure File Embedding</p>
+                </div>
+            </div>
+            <div class="flex space-x-3">
+                <a href="https://github.com/empy" target="_blank" class="p-2 rounded-full hover:bg-gray-800 transition-colors">
+                    <i data-feather="github" class="w-5 h-5"></i>
+                </a>
+                <a href="#about" class="p-2 rounded-full hover:bg-gray-800 transition-colors">
+                    <i data-feather="help-circle" class="w-5 h-5"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-5xl mx-auto p-4 py-8">
+        <!-- Tabs -->
+        <div class="flex justify-center mb-8 border-b border-gray-800">
+            <div class="tab active" data-tab="embed">Embed File</div>
+            <div class="tab" data-tab="extract">Extract File</div>
+        </div>
+
+        <!-- Embed Section -->
+        <div id="embed-container" class="tab-content">
+            <div class="card p-6 mb-8">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold mb-2">Hide Files in Images</h2>
+                    <p class="text-gray-400">Securely embed any file into an image using LSB steganography.</p>
+                </div>
+                
+                <form id="embedForm" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">1. Select Carrier Image</label>
+                        <div class="upload-zone p-6 text-center cursor-pointer relative overflow-hidden">
+                            <input type="file" id="carrierImage" accept="image/*" class="hidden">
+                            <div class="mb-3 flex justify-center">
+                                <i data-feather="image" class="w-12 h-12 text-gray-500"></i>
+                            </div>
+                            <p class="carrier-placeholder mb-1">Drop your image here or click to browse</p>
+                            <p class="text-xs text-gray-500">PNG, JPG or GIF recommended</p>
+                            <div id="carrier-preview" class="hidden mt-4">
+                                <img id="carrier-img-preview" class="max-h-48 mx-auto rounded" src="">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">2. Select File to Embed</label>
+                        <div class="upload-zone p-6 text-center cursor-pointer">
+                            <input type="file" id="fileToEmbed" class="hidden">
+                            <div class="mb-3 flex justify-center">
+                                <i data-feather="file" class="w-12 h-12 text-gray-500"></i>
+                            </div>
+                            <p class="file-placeholder mb-1">Drop any file to embed or click to browse</p>
+                            <p class="text-xs text-gray-500">Select any file type to hide</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">3. Process</label>
+                        <button type="submit" class="btn-primary w-full py-3 px-4 rounded-lg flex items-center justify-center">
+                            <i data-feather="lock" class="w-5 h-5 mr-2"></i>
+                            Embed File
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="embed-result" class="hidden mt-6 p-4 bg-gray-800 rounded-lg">
+                    <div class="flex items-center mb-3">
+                        <div class="w-8 h-8 rounded-full bg-green-900 flex items-center justify-center mr-3">
+                            <i data-feather="check" class="w-5 h-5 text-green-400"></i>
+                        </div>
+                        <h3 class="font-medium">File Embedded Successfully</h3>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-4">Your file has been successfully embedded in the image.</p>
+                    <a id="download-embed" class="btn-primary block w-full py-2 px-4 rounded-lg text-center">
+                        Download Embedded Image
+                    </a>
+                </div>
+                
+                <div id="embed-loading" class="hidden mt-6">
+                    <div class="animate-pulse flex items-center mb-3">
+                        <div class="mr-3 rounded-full bg-gray-700 h-8 w-8"></div>
+                        <div class="h-4 bg-gray-700 rounded w-1/3"></div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 70%"></div>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-2">Processing your file...</p>
+                </div>
+                
+                <div id="embed-error" class="hidden mt-6 p-4 bg-red-900/30 border border-red-800 rounded-lg text-red-400">
+                    <div class="flex items-start">
+                        <i data-feather="alert-circle" class="w-5 h-5 mr-3 mt-0.5"></i>
+                        <div>
+                            <h3 class="font-medium mb-1">Embedding Failed</h3>
+                            <p id="embed-error-message" class="text-sm">Error message will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Extract Section -->
+        <div id="extract-container" class="tab-content hidden">
+            <div class="card p-6 mb-8">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold mb-2">Extract Hidden Files</h2>
+                    <p class="text-gray-400">Recover files that have been embedded in images.</p>
+                </div>
+                
+                <form id="extractForm" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">1. Select Embedded Image</label>
+                        <div class="upload-zone p-6 text-center cursor-pointer relative overflow-hidden">
+                            <input type="file" id="embeddedImage" accept="image/*" class="hidden">
+                            <div class="mb-3 flex justify-center">
+                                <i data-feather="image" class="w-12 h-12 text-gray-500"></i>
+                            </div>
+                            <p class="embedded-placeholder mb-1">Drop your embedded image here or click to browse</p>
+                            <p class="text-xs text-gray-500">Must be an image containing embedded data</p>
+                            <div id="embedded-preview" class="hidden mt-4">
+                                <img id="embedded-img-preview" class="max-h-48 mx-auto rounded" src="">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium mb-2">2. Process</label>
+                        <button type="submit" class="btn-primary w-full py-3 px-4 rounded-lg flex items-center justify-center">
+                            <i data-feather="unlock" class="w-5 h-5 mr-2"></i>
+                            Extract File
+                        </button>
+                    </div>
+                </form>
+                
+                <div id="extract-result" class="hidden mt-6 p-4 bg-gray-800 rounded-lg">
+                    <div class="flex items-center mb-3">
+                        <div class="w-8 h-8 rounded-full bg-green-900 flex items-center justify-center mr-3">
+                            <i data-feather="check" class="w-5 h-5 text-green-400"></i>
+                        </div>
+                        <h3 class="font-medium">File Extracted Successfully</h3>
+                    </div>
+                    <p class="text-sm text-gray-400 mb-4">Your file has been successfully extracted from the image.</p>
+                    <a id="download-extract" class="btn-primary block w-full py-2 px-4 rounded-lg text-center">
+                        Download Extracted File
+                    </a>
+                </div>
+                
+                <div id="extract-loading" class="hidden mt-6">
+                    <div class="animate-pulse flex items-center mb-3">
+                        <div class="mr-3 rounded-full bg-gray-700 h-8 w-8"></div>
+                        <div class="h-4 bg-gray-700 rounded w-1/3"></div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 70%"></div>
+                    </div>
+                    <p class="text-sm text-gray-400 mt-2">Extracting your file...</p>
+                </div>
+                
+                <div id="extract-error" class="hidden mt-6 p-4 bg-red-900/30 border border-red-800 rounded-lg text-red-400">
+                    <div class="flex items-start">
+                        <i data-feather="alert-circle" class="w-5 h-5 mr-3 mt-0.5"></i>
+                        <div>
+                            <h3 class="font-medium mb-1">Extraction Failed</h3>
+                            <p id="extract-error-message" class="text-sm">Error message will appear here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- How It Works Section -->
+        <div id="about" class="card p-6">
+            <h2 class="text-xl font-bold mb-4">How It Works</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="p-4 bg-gray-800 rounded-lg">
+                    <div class="w-10 h-10 bg-indigo-900/50 rounded-full flex items-center justify-center mb-3">
+                        <i data-feather="layers" class="w-5 h-5 text-indigo-400"></i>
+                    </div>
+                    <h3 class="font-medium mb-2">LSB Steganography</h3>
+                    <p class="text-sm text-gray-400">Uses the least significant bits of each pixel's color values to store hidden data without visibly changing the image.</p>
+                </div>
+                <div class="p-4 bg-gray-800 rounded-lg">
+                    <div class="w-10 h-10 bg-indigo-900/50 rounded-full flex items-center justify-center mb-3">
+                        <i data-feather="shield" class="w-5 h-5 text-indigo-400"></i>
+                    </div>
+                    <h3 class="font-medium mb-2">Secure Processing</h3>
+                    <p class="text-sm text-gray-400">All processing happens on your device. No data is uploaded to any server, keeping your files completely private.</p>
+                </div>
+                <div class="p-4 bg-gray-800 rounded-lg">
+                    <div class="w-10 h-10 bg-indigo-900/50 rounded-full flex items-center justify-center mb-3">
+                        <i data-feather="file" class="w-5 h-5 text-indigo-400"></i>
+                    </div>
+                    <h3 class="font-medium mb-2">Universal Compatibility</h3>
+                    <p class="text-sm text-gray-400">Embed any type of file into common image formats. Larger images can store bigger files.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-6 px-4 border-t border-gray-800 mt-8">
+        <div class="max-w-5xl mx-auto text-center text-sm text-gray-500">
+            <p>&copy; 2025 EmPy - Secure File Embedding Tool</p>
+            <p class="mt-1">Made with <span class="text-red-500">♥</span> by the EmPy Team</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript -->
+    <script>
+        // Initialize Feather icons
+        document.addEventListener('DOMContentLoaded', () => {
+            feather.replace();
+            setupTabNavigation();
+            setupDropZones();
+            setupForms();
+        });
+        
+        // Tab navigation
+        function setupTabNavigation() {
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetId = tab.getAttribute('data-tab');
+                    
+                    // Update active tab
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Show content
+                    tabContents.forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    document.getElementById(`${targetId}-container`).classList.remove('hidden');
+                });
+            });
+        }
+        
+        // Handle file upload zones
+        function setupDropZones() {
+            setupDropZone('carrierImage', 'carrier-preview', 'carrier-img-preview', 'carrier-placeholder');
+            setupDropZone('fileToEmbed', null, null, 'file-placeholder');
+            setupDropZone('embeddedImage', 'embedded-preview', 'embedded-img-preview', 'embedded-placeholder');
+        }
+        
+        function setupDropZone(inputId, previewId, imgPreviewId, placeholderId) {
+            const input = document.getElementById(inputId);
+            const dropZone = input.parentElement;
+            const placeholder = dropZone.querySelector(`.${placeholderId}`);
+            
+            dropZone.addEventListener('click', () => input.click());
+            
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('active');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('active');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('active');
+                
+                if (e.dataTransfer.files.length) {
+                    input.files = e.dataTransfer.files;
+                    handleFileSelection(input, previewId, imgPreviewId, placeholder);
+                }
+            });
+
+            input.addEventListener('change', () => {
+                handleFileSelection(input, previewId, imgPreviewId, placeholder);
+            });
+        }
+        
+        function handleFileSelection(input, previewId, imgPreviewId, placeholder) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            // Update placeholder text
+            placeholder.textContent = file.name;
+            
+            // Show image preview if it's an image and previewId is provided
+            if (previewId && imgPreviewId && file.type.startsWith('image/')) {
+                const preview = document.getElementById(previewId);
+                const imgPreview = document.getElementById(imgPreviewId);
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imgPreview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        // UI state functions
+        function showLoading(type) {
+            document.getElementById(`${type}-loading`).classList.remove('hidden');
+            document.getElementById(`${type}-result`).classList.add('hidden');
+            document.getElementById(`${type}-error`).classList.add('hidden');
+            
+            // Simulate progress
+            const progressFill = document.querySelector(`#${type}-loading .progress-fill`);
+            progressFill.style.width = '10%';
+            
+            setTimeout(() => {
+                progressFill.style.width = '40%';
+            }, 300);
+            
+            setTimeout(() => {
+                progressFill.style.width = '70%';
+            }, 600);
+        }
+        
+        function showResult(type) {
+            document.getElementById(`${type}-loading`).classList.add('hidden');
+            document.getElementById(`${type}-result`).classList.remove('hidden');
+            document.getElementById(`${type}-error`).classList.add('hidden');
+        }
+        
+        function showError(type, message) {
+            document.getElementById(`${type}-loading`).classList.add('hidden');
+            document.getElementById(`${type}-result`).classList.add('hidden');
+            document.getElementById(`${type}-error`).classList.remove('hidden');
+            document.getElementById(`${type}-error-message`).textContent = message;
+        }
+
+        // Add debug logging
+        const debugLog = {
+            container: null,
+            active: false,
+            init: function() {
+                // Create debug container if it doesn't exist
+                if (!this.container) {
+                    this.container = document.createElement('div');
+                    this.container.className = 'fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-700 p-4 font-mono text-xs text-gray-300 max-h-64 overflow-y-auto hidden';
+                    this.container.style.zIndex = '1000';
+                    
+                    // Add toggle button
+                    const toggleBtn = document.createElement('button');
+                    toggleBtn.className = 'fixed bottom-4 right-4 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full p-2 shadow-lg';
+                    toggleBtn.innerHTML = '<i data-feather="terminal"></i>';
+                    toggleBtn.style.zIndex = '1001';
+                    toggleBtn.addEventListener('click', () => this.toggle());
+                    
+                    document.body.appendChild(this.container);
+                    document.body.appendChild(toggleBtn);
+                    feather.replace();
+                }
+                return this;
+            },
+            toggle: function() {
+                this.active = !this.active;
+                this.container.classList.toggle('hidden', !this.active);
+                return this;
+            },
+            clear: function() {
+                this.container.innerHTML = '';
+                return this;
+            },
+            log: function(message, type = 'info') {
+                if (!this.container) this.init();
+                
+                const entry = document.createElement('div');
+                entry.className = 'mb-1 pb-1 border-b border-gray-800';
+                
+                // Color based on type
+                let typeClass = 'text-blue-400';
+                if (type === 'error') typeClass = 'text-red-400';
+                if (type === 'success') typeClass = 'text-green-400';
+                if (type === 'warning') typeClass = 'text-yellow-400';
+                
+                // Create timestamp
+                const timestamp = new Date().toLocaleTimeString();
+                
+                entry.innerHTML = `<span class="text-gray-500">[${timestamp}]</span> <span class="${typeClass}">[${type.toUpperCase()}]</span> ${message}`;
+                this.container.appendChild(entry);
+                this.container.scrollTop = this.container.scrollHeight;
+                
+                // Also log to console
+                console.log(`[${type.toUpperCase()}] ${message}`);
+                
+                return this;
+            }
+        };
+
+        // Handle form submissions with enhanced logging
+        function setupForms() {
+            // Initialize debug logger
+            debugLog.init();
+            
+            // Embed Form
+            document.getElementById('embedForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                debugLog.clear().log('Starting embedding process...'); 
+                
+                const carrierImage = document.getElementById('carrierImage').files[0];
+                const fileToEmbed = document.getElementById('fileToEmbed').files[0];
+                
+                if (!carrierImage || !fileToEmbed) {
+                    debugLog.log('Missing required files', 'error');
+                    showError('embed', 'Please select both a carrier image and a file to embed');
+                    return;
+                }
+                
+                debugLog.log(`Carrier image: ${carrierImage.name} (${formatFileSize(carrierImage.size)})`);
+                debugLog.log(`File to embed: ${fileToEmbed.name} (${formatFileSize(fileToEmbed.size)})`);
+                
+                // Calculate capacity estimate
+                if (carrierImage.type.startsWith('image/')) {
+                    const img = new Image();
+                    img.onload = async () => {
+                        const estimatedCapacity = Math.floor((img.width * img.height * 3) / 8);
+                        debugLog.log(`Estimated capacity: ${formatFileSize(estimatedCapacity)}`);
+                        
+                        if (fileToEmbed.size > estimatedCapacity * 0.9) {
+                            debugLog.log('Warning: File may be too large for the carrier image', 'warning');
+                        }
+                        
+                        await processEmbedding(carrierImage, fileToEmbed);
+                    };
+                    img.src = URL.createObjectURL(carrierImage);
+                } else {
+                    debugLog.log('Unable to calculate capacity for non-image carrier', 'warning');
+                    await processEmbedding(carrierImage, fileToEmbed);
+                }
+            });
+            
+            async function processEmbedding(carrierImage, fileToEmbed) {
+                showLoading('embed');
+                debugLog.log('Preparing form data...');
+                
+                const formData = new FormData();
+                formData.append('carrier_image', carrierImage);
+                formData.append('file_to_embed', fileToEmbed);
+
+                try {
+                    debugLog.log('Sending request to server...');
+                    const startTime = performance.now();
+                    
+                    const response = await fetch('/api/embed/embed', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const endTime = performance.now();
+                    debugLog.log(`Server processed request in ${(endTime - startTime).toFixed(2)}ms`);
+
+                    if (response.ok) {
+                        debugLog.log('Response received successfully', 'success');
+                        
+                        const blob = await response.blob();
+                        debugLog.log(`Received embedded image (${formatFileSize(blob.size)})`);
+                        const url = window.URL.createObjectURL(blob);
+                        
+                        // Set download link with .png extension
+                        const downloadLink = document.getElementById('download-embed');
+                        downloadLink.href = url;
+                        downloadLink.download = `embedded_${carrierImage.name.replace(/\.[^/.]+$/, "")}.png`;
+                        
+                        debugLog.log('Embedding completed successfully', 'success');
+                        showResult('embed');
+                    } else {
+                        debugLog.log('Server returned error response', 'error');
+                        try {
+                            const errorData = await response.json();
+                            debugLog.log(`Error details: ${errorData.detail || 'Unknown error'}`, 'error');
+                            showError('embed', errorData.detail || 'Error during embedding process');
+                        } catch (parseError) {
+                            debugLog.log('Could not parse error details', 'error');
+                            showError('embed', 'Error during embedding process');
+                        }
+                    }
+                } catch (error) {
+                    debugLog.log(`Network error: ${error.message}`, 'error');
+                    showError('embed', 'Network error occurred. Please try again.');
+                }
+            }
+            
+            // Extract Form
+            document.getElementById('extractForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                debugLog.clear().log('Starting extraction process...'); 
+                
+                const embeddedImage = document.getElementById('embeddedImage').files[0];
+                
+                if (!embeddedImage) {
+                    debugLog.log('No image selected', 'error');
+                    showError('extract', 'Please select an image with embedded data');
+                    return;
+                }
+                
+                debugLog.log(`Embedded image: ${embeddedImage.name} (${formatFileSize(embeddedImage.size)})`);
+                showLoading('extract');
+                
+                debugLog.log('Preparing form data...');
+                const formData = new FormData();
+                formData.append('image', embeddedImage);
+
+                try {
+                    debugLog.log('Sending request to server...');
+                    const startTime = performance.now();
+                    
+                    const response = await fetch('/api/embed/extract', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const endTime = performance.now();
+                    debugLog.log(`Server processed request in ${(endTime - startTime).toFixed(2)}ms`);
+
+                    if (response.ok) {
+                        debugLog.log('Response received successfully', 'success');
+                        
+                        const blob = await response.blob();
+                        debugLog.log(`Received extracted file (${formatFileSize(blob.size)})`);
+                        const url = window.URL.createObjectURL(blob);
+                        
+                        // Get the suggested filename
+                        const contentDisposition = response.headers.get('content-disposition');
+                        let filename = 'extracted_file';
+                        
+                        if (contentDisposition) {
+                            const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                            if (filenameMatch && filenameMatch[1]) {
+                                filename = filenameMatch[1];
+                                debugLog.log(`Extracted file name: ${filename}`);
+                            }
+                        }
+                        
+                        // Set download link
+                        const downloadLink = document.getElementById('download-extract');
+                        downloadLink.href = url;
+                        downloadLink.download = filename;
+                        
+                        debugLog.log('Extraction completed successfully', 'success');
+                        showResult('extract');
+                    } else {
+                        debugLog.log('Server returned error response', 'error');
+                        let errorMessage = 'Error during extraction process';
+                        
+                        try {
+                            const errorData = await response.json();
+                            if (errorData.detail) {
+                                errorMessage = errorData.detail;
+                                debugLog.log(`Error details: ${errorMessage}`, 'error');
+                            }
+                        } catch (e) {
+                            debugLog.log('Could not parse error response as JSON', 'error');
+                            debugLog.log(`Status: ${response.status} ${response.statusText}`, 'error');
+                            
+                            // Try to get text response
+                            try {
+                                const textResponse = await response.text();
+                                debugLog.log(`Response text: ${textResponse.substring(0, 200)}${textResponse.length > 200 ? '...' : ''}`, 'error');
+                            } catch (textError) {
+                                debugLog.log('Could not read response text', 'error');
+                            }
+                        }
+                        
+                        showError('extract', errorMessage);
+                    }
+                } catch (error) {
+                    debugLog.log(`Network error: ${error.message}`, 'error');
+                    showError('extract', 'Network error occurred. Please try again.');
+                }
+            });
+        }
+        
+        // Helper to format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+    </script>
+</body>
+</html> 
